@@ -1,0 +1,40 @@
+name: Claude Issue Triage
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Issue Triage
+        id: claude-triage
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--allowed-tools "Bash(gh issue edit:*),Bash(gh issue comment:*),Bash(gh label list:*)"'
+          prompt: |
+            Analiza el issue #${{ github.event.issue.number }} de este repositorio (título y cuerpo) y realiza el triage:
+
+            1. Ejecuta `gh label list` para ver las labels existentes. No crees labels nuevas, usa solo las que ya existen.
+            2. Elige las labels aplicables (p.ej. bug, enhancement, documentation, question, duplicate, invalid, help wanted, good first issue) según el contenido del issue.
+            3. Aplica las labels elegidas con `gh issue edit ${{ github.event.issue.number }} --add-label "label1,label2"`.
+            4. Analiza el issue contra la arquitectura del proyecto (lee CLAUDE.md y game.js) para identificar la causa probable, el archivo y la función afectados.
+            5. Publica un comentario con `gh issue comment ${{ github.event.issue.number }} --body "..."` que incluya:
+               - Resumen del problema.
+               - Causa probable.
+               - Archivo(s) y función(es) implicados.
+               - Esbozo de posible solución (sin implementar código todavía).
+
+            No hagas commits ni abras pull requests, solo etiqueta y comenta el issue.
